@@ -11,14 +11,34 @@ temporary_directory=$(mktemp -d)
 cleanup_started=false
 
 inject_latency() {
-  # TODO: add the pricing_latency downstream latency toxic using
-  # TOXIPROXY_PROXY and TOXIPROXY_LATENCY_MS.
-  :
+  curl \
+    --noproxy '*' \
+    --fail \
+    --silent \
+    --show-error \
+    --max-time 2 \
+    --request POST \
+    --header 'Content-Type: application/json' \
+    --data "$(jq --null-input \
+      --arg name pricing_latency \
+      --arg type latency \
+      --arg stream downstream \
+      --argjson latency "$TOXIPROXY_LATENCY_MS" \
+      '{name: $name, type: $type, stream: $stream, attributes: {latency: $latency}}')" \
+    "$TOXIPROXY_URL/proxies/$TOXIPROXY_PROXY/toxics" \
+    >/dev/null
 }
 
 remove_latency() {
-  # TODO: remove the pricing_latency toxic here.
-  :
+  curl \
+    --noproxy '*' \
+    --fail \
+    --silent \
+    --show-error \
+    --max-time 2 \
+    --request DELETE \
+    "$TOXIPROXY_URL/proxies/$TOXIPROXY_PROXY/toxics/pricing_latency" \
+    >/dev/null
 }
 
 cleanup() {
@@ -27,7 +47,7 @@ cleanup() {
   fi
   cleanup_started=true
   remove_latency >/dev/null 2>&1 || true
-  rm --recursive --force -- "$temporary_directory"
+  rm -rf -- "$temporary_directory"
 }
 trap cleanup EXIT
 trap 'exit 130' INT
